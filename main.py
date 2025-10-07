@@ -125,13 +125,15 @@ def get_neighbors(pos):
 
 async def main():
     running = True
-    playing = False
+    playing = True
     count = 0
     update_freq = 30
     current_scheme = 0
 
     positions = set()
     positions.add((GRID_WIDTH/2, GRID_HEIGHT/2))
+
+    positions = gen(random.randrange(4, 10) * GRID_WIDTH)
 
     while running:
         clock.tick(FPS)
