@@ -1,4 +1,5 @@
 import pygame
+import asyncio
 import random
 
 pygame.init()
@@ -122,7 +123,7 @@ def get_neighbors(pos):
 
     return neighbors          
 
-def main():
+async def main():
     running = True
     playing = False
     count = 0
@@ -188,8 +189,10 @@ def main():
         screen.fill(COLOR_SCHEMES[current_scheme]["background"])            
         draw_grid(positions, COLOR_SCHEMES[current_scheme])
         pygame.display.update()
+        await asyncio.sleep(0)
 
     pygame.quit()
 
 if __name__ == "__main__":
-    main()                
+    asyncio.run(main())
+                    
