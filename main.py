@@ -1,6 +1,7 @@
 import pygame
 import asyncio
 import random
+import sys
 
 pygame.init()
 
@@ -67,6 +68,127 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
 clock = pygame.time.Clock()
 
+def setup_web_buttons():
+    """Add HTML buttons for web builds that inject keyboard events"""
+    if sys.platform == "emscripten":
+        try:
+            import platform
+            
+            platform.window.eval("""
+                const style = document.createElement('style');
+                style.innerHTML = `
+                    #game-controls {
+                        position: absolute;
+                        top: 10px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        z-index: 1000;
+                        display: flex;
+                        gap: 10px;
+                        flex-wrap: wrap;
+                        justify-content: center;
+                        max-width: 90%;
+                    }
+                    .game-btn {
+                        background-color: #4CAF50;
+                        border: none;
+                        color: white;
+                        padding: 10px 20px;
+                        text-align: center;
+                        text-decoration: none;
+                        display: inline-block;
+                        font-size: 14px;
+                        margin: 2px;
+                        cursor: pointer;
+                        border-radius: 5px;
+                        font-weight: bold;
+                        transition: background-color 0.3s;
+                    }
+                    .game-btn:hover {
+                        background-color: #45a049;
+                    }
+                    .game-btn:active {
+                        background-color: #3d8b40;
+                        transform: translateY(1px);
+                    }
+                    .game-btn.pause {
+                        background-color: #ff9800;
+                    }
+                    .game-btn.pause:hover {
+                        background-color: #e68900;
+                    }
+                    .game-btn.clear {
+                        background-color: #f44336;
+                    }
+                    .game-btn.clear:hover {
+                        background-color: #da190b;
+                    }
+                    .game-btn.theme {
+                        background-color: #9c27b0;
+                    }
+                    .game-btn.theme:hover {
+                        background-color: #7b1fa2;
+                    }
+                    .game-btn.speed {
+                        background-color: #2196F3;
+                    }
+                    .game-btn.speed:hover {
+                        background-color: #0b7dda;
+                    }
+                `;
+                document.head.appendChild(style);
+            """)
+            
+            platform.window.eval("""
+                const controlsDiv = document.createElement('div');
+                controlsDiv.id = 'game-controls';
+                controlsDiv.innerHTML = `
+                    <button class="game-btn pause" onclick="simulateKey('Space')">Play/Pause</button>
+                    <button class="game-btn clear" onclick="simulateKey('KeyC')">Clear</button>
+                    <button class="game-btn" onclick="simulateKey('KeyG')">Generate</button>
+                    <button class="game-btn theme" onclick="simulateKey('KeyT')">Theme</button>
+                    <button class="game-btn speed" onclick="simulateKey('KeyR')">Slower</button>
+                    <button class="game-btn speed" onclick="simulateKey('KeyE')">Faster</button>
+                `;
+                document.body.insertBefore(controlsDiv, document.body.firstChild);
+                
+                window.simulateKey = function(keyCode) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    const canvas = document.getElementById('canvas');
+                    
+                    const keydownEvent = new KeyboardEvent('keydown', {
+                        code: keyCode,
+                        key: keyCode === 'Space' ? ' ' : keyCode.replace('Key', '').toLowerCase(),
+                        keyCode: keyCode === 'Space' ? 32 : keyCode.charCodeAt(keyCode.length - 1),
+                        which: keyCode === 'Space' ? 32 : keyCode.charCodeAt(keyCode.length - 1),
+                        bubbles: true,
+                        cancelable: true,
+                        composed: true
+                    });
+                    
+                    document.dispatchEvent(keydownEvent);
+                    canvas.dispatchEvent(keydownEvent);
+                    
+                    setTimeout(() => {
+                        const keyupEvent = new KeyboardEvent('keyup', {
+                            code: keyCode,
+                            key: keyCode === 'Space' ? ' ' : keyCode.replace('Key', '').toLowerCase(),
+                            keyCode: keyCode === 'Space' ? 32 : keyCode.charCodeAt(keyCode.length - 1),
+                            which: keyCode === 'Space' ? 32 : keyCode.charCodeAt(keyCode.length - 1),
+                            bubbles: true,
+                            cancelable: true,
+                            composed: true
+                        });
+                        document.dispatchEvent(keyupEvent);
+                        canvas.dispatchEvent(keyupEvent);
+                    }, 50);
+                };
+            """)
+        except Exception as e:
+            print(f"Could not setup web buttons: {e}")
+
 def gen(num):
     return set([(random.randrange(0, GRID_HEIGHT), random.randrange(0, GRID_WIDTH)) for _ in range(num)])
 
@@ -124,16 +246,16 @@ def get_neighbors(pos):
     return neighbors          
 
 async def main():
+    setup_web_buttons()
+    
     running = True
-    playing = True
+    playing = False
     count = 0
     update_freq = 30
     current_scheme = 0
 
     positions = set()
     positions.add((GRID_WIDTH/2, GRID_HEIGHT/2))
-
-    positions = gen(random.randrange(4, 10) * GRID_WIDTH)
 
     while running:
         clock.tick(FPS)
